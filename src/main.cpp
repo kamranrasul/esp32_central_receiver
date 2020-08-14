@@ -16,6 +16,7 @@
 #include "SPIFFS.h"        // for file flash system upload
 #include "TaskScheduler.h" // for mimic delay
 #include "time.h"          // time update from ntp
+#include "clock.h"         // for time display on LCD
 
 // Local WiFi Credentials
 const char *ssid = "YOUR SSID";
@@ -48,10 +49,12 @@ void countDownTimer();
 void printLocalTime();
 void tftDisplay();
 void detectChange();
+void clock_update();
 
 // Setup tasks for the task scheduler
 Task dataDisplayTFT(tftRefreshTime, TASK_FOREVER, &tftDisplay);
 Task dataScheduler(countDownTImer, TASK_FOREVER, &countDownTimer);
+Task clockUpdate(1000, TASK_FOREVER, &clock_update);
 
 // Create the scheduler
 Scheduler runner;
@@ -64,6 +67,9 @@ int storedPin[4] = {0, 0, 0, 0};
 
 // tft is global to this file only
 TFT_eSPI tft = TFT_eSPI();
+
+// time struct for time update
+struct tm timeinfo;
 
 // for tft background and font-background color
 uint16_t bg = TFT_BLACK;
@@ -107,10 +113,12 @@ void setup()
   // add task to the scheduler
   runner.addTask(dataDisplayTFT);
   runner.addTask(dataScheduler);
+  runner.addTask(clockUpdate);
 
   // enabling the schedulers
   dataDisplayTFT.enable();
   dataScheduler.enable();
+  clockUpdate.enable();
 
   // setting up esp NOW
   espNowSetup();
@@ -150,7 +158,6 @@ void timeSetup()
 // time function
 void printLocalTime()
 {
-  struct tm timeinfo;
   if (!getLocalTime(&timeinfo))
   {
     Serial.println("Failed to obtain time");
@@ -278,6 +285,7 @@ void tftSetup()
 void countDownTimer()
 {
   tft.fillRect(279, 4, 26, 18, bg);
+  tft.setTextColor(fg, bg);
   tft.setCursor(280, 5);
   tft.print(--count == -1 ? countInit : count);
 }
@@ -385,4 +393,9 @@ void detectChange()
       }
     }
   }
+}
+
+void clock_update()
+{
+  refresh_clock(&tft, &timeinfo);
 }
