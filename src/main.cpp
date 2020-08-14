@@ -18,8 +18,8 @@
 #include "time.h"          // time update from ntp
 
 // Local WiFi Credentials
-const char *ssid = "Hidden_network";
-const char *password = "pak.awan.pk";
+const char *ssid = "YOUR SSID";
+const char *password = "YOUR PASS";
 
 // time variable setup
 const char *ntpServer = "pool.ntp.org";
