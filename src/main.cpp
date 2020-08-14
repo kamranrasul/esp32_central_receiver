@@ -26,9 +26,16 @@ const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = -25362;
 const int daylightOffset_sec = 3600;
 
-// for updates between the webserver and central esp32
+// for updates between the IO and central esp32
 #define RXD2 16
 #define TXD2 17
+
+// countdown initializer on display
+#define countInit 20
+
+// scheduler initializer
+#define tftRefreshTime 20000
+#define countDownTImer 1000
 
 // declaration of functions for setup
 void initSPIFFS();
@@ -43,14 +50,14 @@ void tftDisplay();
 void detectChange();
 
 // Setup tasks for the task scheduler
-Task dataDisplayTFT(9800, TASK_FOREVER, &tftDisplay);
-Task dataScheduler(1000, TASK_FOREVER, &countDownTimer);
+Task dataDisplayTFT(tftRefreshTime, TASK_FOREVER, &tftDisplay);
+Task dataScheduler(countDownTImer, TASK_FOREVER, &countDownTimer);
 
 // Create the scheduler
 Scheduler runner;
 
 // count down timer
-int count = 10;
+int count = countInit;
 
 // storing status of pins
 int storedPin[4] = {0, 0, 0, 0};
@@ -90,6 +97,9 @@ void setup()
 
   // get time from internet
   timeSetup();
+
+  // setting up tft
+  tftSetup();
 
   // Start the task scheduler
   runner.init();
@@ -209,6 +219,12 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len)
   }
 
   Serial.println("\n*** Sent to Webserver ***");
+
+  // Disable the tasks
+  dataDisplayTFT.disable();
+
+  // Enable the task
+  dataDisplayTFT.enable();
 }
 
 // setting up esp NOW
@@ -261,29 +277,28 @@ void tftSetup()
 // count down timer on the tft
 void countDownTimer()
 {
-  tft.fillRect(279, 4, 13, 18, bg);
+  tft.fillRect(279, 4, 26, 18, bg);
   tft.setCursor(280, 5);
-  tft.print(--count == -1 ? 9 : count);
+  tft.print(--count == -1 ? countInit : count);
 }
 
 // displaying on tft
 void tftDisplay()
 {
   // If you set this, the TFT will not work!!!
-  count = 10;
+  count = countInit;
 
   uint16_t bg = TFT_BLACK;
   uint16_t fg = TFT_WHITE;
 
   // displaying on the TFT
+  tft.fillScreen(bg);
   tft.setCursor(5, 5);
   tft.setTextColor(fg, bg);
   // Create TTF fonts using instructions at https://pages.uoregon.edu/park/Processing/process5.html
   tft.loadFont("NotoSansBold20");
   tft.print("Right now, next update in: ");
   tft.fillRect(5, 100, 30, 30, bg);
-  //  tft.setCursor(5, 100);
-  //  tft.println(count);
 
   tft.setTextColor(TFT_YELLOW, bg);
 
@@ -364,6 +379,10 @@ void detectChange()
       // Enable the task
       dataDisplayTFT.enable();
       dataScheduler.enable();
+      for (int j = 0; j < 4; j++)
+      {
+        storedPin[j] = boardsStruct.pinStatus[j];
+      }
     }
   }
 }
