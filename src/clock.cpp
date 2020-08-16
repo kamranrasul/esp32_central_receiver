@@ -7,9 +7,9 @@ void refresh_clock(TFT_eSPI *tft, tm *timeinfo)
   //See documentation for ezTime options: https://github.com/ropg/ezTime
   tft->loadFont("NotoSansBold20");
   // See available colors at https://github.com/Bodmer/TFT_eSPI/blob/master/TFT_eSPI.h
-  tft->setTextColor(TFT_GREEN, TFT_WHITE);
+  tft->setTextColor(TFT_WHITE, TFT_BLACK);
   //Clear the date area
-  tft->fillRect(205, 195, 105, 50, TFT_WHITE);
+  tft->fillRect(205, 195, 105, 50, TFT_BLACK);
 
   // date printing
   getLocalTime(timeinfo);

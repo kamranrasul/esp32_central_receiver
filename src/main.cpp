@@ -19,8 +19,8 @@
 #include "clock.h"         // for time display on LCD
 
 // Local WiFi Credentials
-const char *ssid = "YOUR SSID";
-const char *password = "YOUR PASS";
+const char *WIFI_SSID = "YOUR SSID";
+const char *WIFI_PASS = "YOUR PASS";
 
 // time variable setup
 const char *ntpServer = "pool.ntp.org";
@@ -35,7 +35,7 @@ const int daylightOffset_sec = 3600;
 #define countInit 20
 
 // scheduler initializer
-#define tftRefreshTime 20000
+#define tftRefreshTime 10000
 #define countDownTImer 1000
 
 // declaration of functions for setup
@@ -75,21 +75,25 @@ struct tm timeinfo;
 uint16_t bg = TFT_BLACK;
 uint16_t fg = TFT_WHITE;
 
-// Structure example to receive data
-// Must match the sender structure
+// Must match the sender receiver structure
 typedef struct struct_message
 {
-  int id; // must be unique for each sender board
-  int pinStatus[4];
-  float temperature;
-  float humidity;
-  float pressure;
-  float altitude;
+  int id;            // must be unique for each sender board
+  int pinStatus[4];  // for peripheral status
+  float temperature; // for storing temperature
+  float humidity;    // for storing himmidity
+  float pressure;    // for storing pressure
+  float altitude;    // for storing altitude
+
+  float temp6050;    // for storing onboard temperature
+  float A_values[3]; // for storing accelrometer values
+  float G_values[3]; // for storing gyroscope values
 } struct_message;
 
 // Create an array with all the structures
 struct_message boardsStruct;
 
+// setup for esp32
 void setup()
 {
   // initialize Serial Monitor with computer
@@ -124,6 +128,7 @@ void setup()
   espNowSetup();
 }
 
+// looping  forever
 void loop()
 {
   // Execute the scheduler runner
@@ -137,8 +142,8 @@ void loop()
 void timeSetup()
 {
   //connect to WiFi
-  Serial.printf("Connecting to %s ", ssid);
-  WiFi.begin(ssid, password);
+  Serial.printf("Connecting to %s ", WIFI_SSID);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
@@ -184,18 +189,9 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len)
   Serial.println(macStr);
   memcpy(&boardsStruct, incomingData, sizeof(boardsStruct));
 
-  Serial.printf("Board ID %u: %u bytes", boardsStruct.id, len);
+  // displaying the controller pin status
   Serial.println();
-  Serial.println();
-  Serial.printf("Temperature: %-6.2f °C", boardsStruct.temperature);
-  Serial.println();
-  Serial.printf("Humidity:    %-6.2f %%", boardsStruct.humidity);
-  Serial.println();
-  Serial.printf("Pressure:    %-6.2f hPa", boardsStruct.pressure);
-  Serial.println();
-  Serial.printf("Altitude:    %-6.2f m", boardsStruct.altitude);
-  Serial.println();
-  Serial.println();
+  Serial.println("*** Controller Values ***");
 
   Serial.printf("Control 14 is %3s.", boardsStruct.pinStatus[0] ? "ON" : "OFF");
   Serial.println();
@@ -206,7 +202,29 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len)
     Serial.println();
   }
 
-  // sending to webserver
+  // displaying BME280 values on the serial output
+  Serial.println();
+  Serial.println("*** BME280 Values ***");
+  Serial.printf("Temperature:   %-6.2f °C", boardsStruct.temperature);
+  Serial.println();
+  Serial.printf("Humidity:      %-6.2f %%", boardsStruct.humidity);
+  Serial.println();
+  Serial.printf("Pressure:      %-6.2f hPa", boardsStruct.pressure);
+  Serial.println();
+  Serial.printf("Altitude:      %-6.2f m", boardsStruct.altitude);
+  Serial.println();
+
+  // displaying MPU6050 values on the serial output
+  Serial.println();
+  Serial.println("*** MPU6050 Values ***");
+  Serial.printf("Temperature:   %-6.2f °C", boardsStruct.temp6050);
+  Serial.println();
+  Serial.printf("Acceleration   X: %5.2f, Y: %5.2f, Z: %5.2f   m/s^2", boardsStruct.A_values[0], boardsStruct.A_values[1], boardsStruct.A_values[2]);
+  Serial.println();
+  Serial.printf("Rotation       X: %5.2f, Y: %5.2f, Z: %5.2f   rad/s", boardsStruct.G_values[0], boardsStruct.G_values[1], boardsStruct.G_values[2]);
+  Serial.println();
+
+  // sending BME values to IO server
   Serial2.print(boardsStruct.temperature);
   Serial2.print(" "); // spacer
 
@@ -225,7 +243,29 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len)
     Serial2.print(" "); // spacer
   }
 
-  Serial.println("\n*** Sent to Webserver ***");
+  // sending MPU6050 values to IO server
+  Serial2.print(boardsStruct.temp6050);
+  Serial2.print(" "); // spacer
+
+  Serial2.print(boardsStruct.A_values[0]);
+  Serial2.print(" "); // spacer
+
+  Serial2.print(boardsStruct.A_values[1]);
+  Serial2.print(" "); // spacer
+
+  Serial2.print(boardsStruct.A_values[2]);
+  Serial2.print(" "); // spacer
+
+  Serial2.print(boardsStruct.G_values[0]);
+  Serial2.print(" "); // spacer
+
+  Serial2.print(boardsStruct.G_values[1]);
+  Serial2.print(" "); // spacer
+
+  Serial2.print(boardsStruct.G_values[2]);
+  Serial2.print(" "); // spacer
+
+  Serial.println("\n*** Sent to IO IC ***");
 
   // Disable the tasks
   dataDisplayTFT.disable();
@@ -284,6 +324,10 @@ void tftSetup()
 // count down timer on the tft
 void countDownTimer()
 {
+  if (count < 0)
+  {
+    count = 20;
+  }
   tft.fillRect(279, 4, 26, 18, bg);
   tft.setTextColor(fg, bg);
   tft.setCursor(280, 5);
@@ -293,9 +337,6 @@ void countDownTimer()
 // displaying on tft
 void tftDisplay()
 {
-  // If you set this, the TFT will not work!!!
-  count = countInit;
-
   uint16_t bg = TFT_BLACK;
   uint16_t fg = TFT_WHITE;
 
@@ -303,72 +344,114 @@ void tftDisplay()
   tft.fillScreen(bg);
   tft.setCursor(5, 5);
   tft.setTextColor(fg, bg);
-  // Create TTF fonts using instructions at https://pages.uoregon.edu/park/Processing/process5.html
+
   tft.loadFont("NotoSansBold20");
   tft.print("Right now, next update in: ");
   tft.fillRect(5, 100, 30, 30, bg);
 
   tft.setTextColor(TFT_YELLOW, bg);
 
-  // Temperature
-  tft.fillRect(10, 30, 250, 30, bg);
-  tft.setCursor(10, 30);
-  tft.printf("Temperature:");
-  tft.setCursor(160, 30);
-  tft.print(boardsStruct.temperature);
-  tft.println("  °C");
+  // Create TTF fonts using instructions at https://pages.uoregon.edu/park/Processing/process5.html
+  if (count < 10)
+  {
+    // Temperature
+    tft.fillRect(10, 30, 250, 30, bg);
+    tft.setCursor(10, 30);
+    tft.printf("Temperature:");
+    tft.setCursor(160, 30);
+    tft.print(boardsStruct.temperature);
+    tft.println("  °C");
 
-  // Humidity
-  tft.fillRect(10, 45, 250, 30, bg);
-  tft.setCursor(10, 55);
-  tft.print("Humidity:");
-  tft.setCursor(160, 55);
-  tft.print(boardsStruct.humidity);
-  tft.println("   %");
+    // Humidity
+    tft.fillRect(10, 45, 250, 30, bg);
+    tft.setCursor(10, 55);
+    tft.print("Humidity:");
+    tft.setCursor(160, 55);
+    tft.print(boardsStruct.humidity);
+    tft.println("   %");
 
-  // Pressure
-  tft.fillRect(10, 80, 250, 30, bg);
-  tft.setCursor(10, 80);
-  tft.print("Pressure:");
-  tft.setCursor(160, 80);
-  tft.print(boardsStruct.pressure);
-  tft.println(" hPa");
+    // Pressure
+    tft.fillRect(10, 80, 250, 30, bg);
+    tft.setCursor(10, 80);
+    tft.print("Pressure:");
+    tft.setCursor(160, 80);
+    tft.print(boardsStruct.pressure);
+    tft.println(" hPa");
 
-  // Appx altitude
-  tft.fillRect(10, 105, 250, 30, bg);
-  tft.setCursor(10, 105);
-  tft.print("Altitude:");
-  tft.setCursor(160, 105);
-  tft.print(boardsStruct.altitude);
-  tft.println("   m");
+    // Appx altitude
+    tft.fillRect(10, 105, 250, 30, bg);
+    tft.setCursor(10, 105);
+    tft.print("Altitude:");
+    tft.setCursor(160, 105);
+    tft.print(boardsStruct.altitude);
+    tft.println("   m");
 
-  // INPUT 14
-  tft.fillRect(10, 130, 250, 30, bg);
-  tft.setCursor(10, 130);
-  tft.print("Light:");
-  tft.setCursor(160, 130);
-  tft.println(boardsStruct.pinStatus[0] ? "ON" : "OFF");
+    // INPUT 14
+    tft.fillRect(10, 130, 250, 30, bg);
+    tft.setCursor(10, 130);
+    tft.print("Light:");
+    tft.setCursor(160, 130);
+    tft.println(boardsStruct.pinStatus[0] ? "ON" : "OFF");
 
-  // INPUT 210
-  tft.fillRect(10, 155, 250, 30, bg);
-  tft.setCursor(10, 155);
-  tft.print("Furnace:");
-  tft.setCursor(160, 155);
-  tft.println(boardsStruct.pinStatus[1] ? "ON" : "OFF");
+    // INPUT 210
+    tft.fillRect(10, 155, 250, 30, bg);
+    tft.setCursor(10, 155);
+    tft.print("Furnace:");
+    tft.setCursor(160, 155);
+    tft.println(boardsStruct.pinStatus[1] ? "ON" : "OFF");
 
-  // INPUT 26
-  tft.fillRect(10, 180, 250, 30, bg);
-  tft.setCursor(10, 180);
-  tft.print("Exhaust:");
-  tft.setCursor(160, 180);
-  tft.println(boardsStruct.pinStatus[2] ? "ON" : "OFF");
+    // INPUT 26
+    tft.fillRect(10, 180, 250, 30, bg);
+    tft.setCursor(10, 180);
+    tft.print("Exhaust:");
+    tft.setCursor(160, 180);
+    tft.println(boardsStruct.pinStatus[2] ? "ON" : "OFF");
 
-  // INPUT 27
-  tft.fillRect(10, 205, 250, 30, bg);
-  tft.setCursor(10, 205);
-  tft.print("Humidifier:");
-  tft.setCursor(160, 205);
-  tft.println(boardsStruct.pinStatus[3] ? "ON" : "OFF");
+    // INPUT 27
+    tft.fillRect(10, 205, 250, 30, bg);
+    tft.setCursor(10, 205);
+    tft.print("Humidifier:");
+    tft.setCursor(160, 205);
+    tft.println(boardsStruct.pinStatus[3] ? "ON" : "OFF");
+  }
+  else // for MPU6050
+  {
+    // Temperature
+    tft.fillRect(5, 50, 200, 30, bg);
+    tft.setCursor(5, 50);
+    tft.print("Temperature: ");
+    tft.print(boardsStruct.temp6050);
+    tft.println(" °C");
+
+    // Accelerometer and Gyroscope
+    tft.fillRect(5, 80, 200, 30, bg);
+    tft.setCursor(5, 80);
+    tft.println("Accelerometer Values: (m/s^2)");
+    tft.fillRect(5, 120, 200, 30, bg);
+    tft.print("  AcX: ");
+    tft.println(boardsStruct.A_values[0]);
+
+    tft.fillRect(5, 160, 200, 30, bg);
+    tft.print("  AcY: ");
+    tft.println(boardsStruct.A_values[1]);
+
+    tft.fillRect(5, 190, 200, 30, bg);
+    tft.print("  AcZ: ");
+    tft.println(boardsStruct.A_values[2]);
+
+    tft.fillRect(5, 220, 200, 30, bg);
+    tft.println("Gyroscope Values: (rad/s)");
+    tft.print("  GyX: ");
+    tft.println(boardsStruct.G_values[0]);
+
+    tft.fillRect(5, 250, 200, 30, bg);
+    tft.print("  GyY: ");
+    tft.println(boardsStruct.G_values[1]);
+
+    tft.fillRect(5, 280, 200, 200, bg);
+    tft.print("  GyZ: ");
+    tft.println(boardsStruct.G_values[2]);
+  }
 }
 
 // kind of interrupt function
@@ -387,6 +470,8 @@ void detectChange()
       // Enable the task
       dataDisplayTFT.enable();
       dataScheduler.enable();
+
+      // assigning the previous values
       for (int j = 0; j < 4; j++)
       {
         storedPin[j] = boardsStruct.pinStatus[j];
@@ -395,6 +480,7 @@ void detectChange()
   }
 }
 
+// for clock updates
 void clock_update()
 {
   refresh_clock(&tft, &timeinfo);
