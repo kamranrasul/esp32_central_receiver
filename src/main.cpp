@@ -32,7 +32,7 @@ const int daylightOffset_sec = 3600;
 #define TXD2 17
 
 // countdown initializer on display
-#define countInit 20
+#define countInit 21
 
 // scheduler initializer
 #define tftRefreshTime 10000
@@ -61,6 +61,9 @@ Scheduler runner;
 
 // count down timer
 int count = countInit;
+
+// for switching display
+bool switchDisp = true;
 
 // storing status of pins
 int storedPin[4] = {0, 0, 0, 0};
@@ -267,6 +270,8 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len)
 
   Serial.println("\n*** Sent to IO IC ***");
 
+  switchDisp = true;
+  count = countInit;
   // Disable the tasks
   dataDisplayTFT.disable();
 
@@ -324,10 +329,13 @@ void tftSetup()
 // count down timer on the tft
 void countDownTimer()
 {
-  if (count < 0)
-  {
-    count = 20;
-  }
+  count = count <= 0 ? countInit : count;
+  switchDisp = (count == 1 || count == 11) ? !switchDisp : switchDisp;
+
+  // debugging on Serial Port
+  //Serial.printf("Count: %d\n\r", count);
+  //Serial.printf("Switch Disp: %d\n\r", int(switchDisp));
+
   tft.fillRect(279, 4, 26, 18, bg);
   tft.setTextColor(fg, bg);
   tft.setCursor(280, 5);
@@ -352,7 +360,7 @@ void tftDisplay()
   tft.setTextColor(TFT_YELLOW, bg);
 
   // Create TTF fonts using instructions at https://pages.uoregon.edu/park/Processing/process5.html
-  if (count < 10)
+  if (switchDisp == true)
   {
     // Temperature
     tft.fillRect(10, 30, 250, 30, bg);
