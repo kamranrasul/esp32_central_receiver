@@ -14,12 +14,25 @@ void refresh_clock(TFT_eSPI *tft, tm *timeinfo)
   // date printing
   getLocalTime(timeinfo);
 
-  String pDate = String(timeinfo->tm_year + 1900) + "-" +
-                 String(timeinfo->tm_mon + 1) + "-" +
-                 String(timeinfo->tm_mday);
-  String pTime = String(timeinfo->tm_hour) + ":" +
-                 String(timeinfo->tm_min) + ":" +
-                 String(timeinfo->tm_sec);
+  String year,
+         month,
+         day;
+
+  year  = String(timeinfo->tm_year + 1900);
+  month = ((timeinfo->tm_mon + 1) < 10) ? ("0" + String(timeinfo->tm_mon + 1)) : (String(timeinfo->tm_mon + 1));
+  day   = ((timeinfo->tm_mday)    < 10) ? ("0" + String(timeinfo->tm_mday))    : String(timeinfo->tm_mday);
+  
+  String pDate = year + "-" + month + "-" +  day;
+
+  String hour,
+         minute,
+         second;
+
+  hour   = (timeinfo->tm_hour < 10) ? ("0" + String(timeinfo->tm_hour)) : String(timeinfo->tm_hour);
+  minute = (timeinfo->tm_min  < 10) ? ("0" + String(timeinfo->tm_min)) : String(timeinfo->tm_min);
+  second = (timeinfo->tm_sec  < 10) ? ("0" + String(timeinfo->tm_sec)) : String(timeinfo->tm_sec);
+
+  String pTime = hour + ":" + minute + ":" + second;
 
   int pDateLen = pDate.length(),
       pTimeLen = pTime.length();

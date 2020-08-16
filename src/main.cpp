@@ -54,7 +54,7 @@ void clock_update();
 // Setup tasks for the task scheduler
 Task dataDisplayTFT(tftRefreshTime, TASK_FOREVER, &tftDisplay);
 Task dataScheduler(countDownTImer, TASK_FOREVER, &countDownTimer);
-Task clockUpdate(1000, TASK_FOREVER, &clock_update);
+Task clockUpdate(countDownTImer, TASK_FOREVER, &clock_update);
 
 // Create the scheduler
 Scheduler runner;
@@ -363,7 +363,7 @@ void tftDisplay()
     tft.println("  °C");
 
     // Humidity
-    tft.fillRect(10, 45, 250, 30, bg);
+    tft.fillRect(10, 50, 250, 30, bg);
     tft.setCursor(10, 55);
     tft.print("Humidity:");
     tft.setCursor(160, 55);
@@ -417,39 +417,39 @@ void tftDisplay()
   else // for MPU6050
   {
     // Temperature
-    tft.fillRect(5, 50, 200, 30, bg);
-    tft.setCursor(5, 50);
+    tft.fillRect(10, 30, 250, 30, bg);
+    tft.setCursor(10, 30);
     tft.print("Temperature: ");
     tft.print(boardsStruct.temp6050);
     tft.println(" °C");
 
     // Accelerometer and Gyroscope
-    tft.fillRect(5, 80, 200, 30, bg);
-    tft.setCursor(5, 80);
+    tft.fillRect(10, 60, 250, 30, bg);
+    tft.setCursor(10, 60);
     tft.println("Accelerometer Values: (m/s^2)");
-    tft.fillRect(5, 120, 200, 30, bg);
-    tft.print("  AcX: ");
+    tft.fillRect(10, 90, 250, 30, bg);
+    tft.print("   AcX: ");
     tft.println(boardsStruct.A_values[0]);
 
-    tft.fillRect(5, 160, 200, 30, bg);
-    tft.print("  AcY: ");
+    tft.fillRect(10, 120, 250, 30, bg);
+    tft.print("   AcY: ");
     tft.println(boardsStruct.A_values[1]);
 
-    tft.fillRect(5, 190, 200, 30, bg);
-    tft.print("  AcZ: ");
+    tft.fillRect(10, 150, 250, 30, bg);
+    tft.print("   AcZ: ");
     tft.println(boardsStruct.A_values[2]);
 
-    tft.fillRect(5, 220, 200, 30, bg);
-    tft.println("Gyroscope Values: (rad/s)");
-    tft.print("  GyX: ");
+    tft.fillRect(10, 180, 250, 30, bg);
+    tft.println(" Gyroscope Values: (rad/s)");
+    tft.print("   GyX: ");
     tft.println(boardsStruct.G_values[0]);
 
-    tft.fillRect(5, 250, 200, 30, bg);
-    tft.print("  GyY: ");
+    tft.fillRect(10, 210, 250, 30, bg);
+    tft.print("   GyY: ");
     tft.println(boardsStruct.G_values[1]);
 
-    tft.fillRect(5, 280, 200, 200, bg);
-    tft.print("  GyZ: ");
+    tft.fillRect(10, 240, 250, 30, bg);
+    tft.print("   GyZ: ");
     tft.println(boardsStruct.G_values[2]);
   }
 }
