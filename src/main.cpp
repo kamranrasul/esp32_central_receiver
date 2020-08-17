@@ -19,8 +19,8 @@
 #include "clock.h"         // for time display on LCD
 
 // Local WiFi Credentials
-const char *WIFI_SSID = "YOUR SSID";
-const char *WIFI_PASS = "YOUR PASS";
+const char *WIFI_SSID = "Hidden_network";
+const char *WIFI_PASS = "pak.awan.pk";
 
 // time variable setup
 const char *ntpServer = "pool.ntp.org";
@@ -65,7 +65,7 @@ int count = countInit;
 // for switching display
 bool switchDisp = true;
 
-// storing status of pins
+// storing last status of pins
 int storedPin[4] = {0, 0, 0, 0};
 
 // tft is global to this file only
@@ -82,15 +82,20 @@ uint16_t fg = TFT_WHITE;
 typedef struct struct_message
 {
   int id;            // must be unique for each sender board
+
+  // controller pin state
   int pinStatus[4];  // for peripheral status
+
+  // for BME Chip
   float temperature; // for storing temperature
   float humidity;    // for storing himmidity
   float pressure;    // for storing pressure
   float altitude;    // for storing altitude
 
+  // for MPU Chip
   float temp6050;    // for storing onboard temperature
-  float A_values[3]; // for storing accelrometer values
-  float G_values[3]; // for storing gyroscope values
+  float A_values[3]; // for storing accelrometer values x, y, z
+  float G_values[3]; // for storing gyroscope values x, y, z
 } struct_message;
 
 // Create an array with all the structures
@@ -126,6 +131,7 @@ void setup()
   dataDisplayTFT.enable();
   dataScheduler.enable();
   clockUpdate.enable();
+  //runner.enableAll();
 
   // setting up esp NOW
   espNowSetup();
@@ -161,6 +167,53 @@ void timeSetup()
   //disconnect WiFi as it's no longer needed
   WiFi.disconnect(true);
   WiFi.mode(WIFI_OFF);
+}
+
+// setting up esp NOW
+void espNowSetup()
+{
+  //Set device as a Wi-Fi Station
+  WiFi.mode(WIFI_STA);
+
+  //Init ESP-NOW
+  if (esp_now_init() != ESP_OK)
+  {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
+
+  // Once ESPNow is successfully Init, we will register for recv CB to
+  // get recv packer info
+  esp_now_register_recv_cb(OnDataRecv);
+}
+
+// SPIFFS Initialization
+void initSPIFFS()
+{
+  if (!SPIFFS.begin())
+  {
+    Serial.println("Cannot mount SPIFFS volume...");
+    while (1)
+      ; // infinite loop
+  }
+  else
+  {
+    Serial.println("SPIFFS volume mounted properly");
+  }
+}
+
+// setting up tft
+void tftSetup()
+{
+  // Setup the TFT
+  tft.begin();
+  tft.setRotation(3);
+  tft.loadFont("NotoSansBold20");
+  tft.setTextColor(fg, bg);
+  tft.fillScreen(bg);
+  tft.setCursor(0, 0);
+  tft.println("Hello!");
+  tft.println("Searching for the sensor...");
 }
 
 // time function
@@ -269,61 +322,6 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len)
   Serial2.print(" "); // spacer
 
   Serial.println("\n*** Sent to IO IC ***");
-
-  switchDisp = true;
-  count = countInit;
-  // Disable the tasks
-  dataDisplayTFT.disable();
-
-  // Enable the task
-  dataDisplayTFT.enable();
-}
-
-// setting up esp NOW
-void espNowSetup()
-{
-  //Set device as a Wi-Fi Station
-  WiFi.mode(WIFI_STA);
-
-  //Init ESP-NOW
-  if (esp_now_init() != ESP_OK)
-  {
-    Serial.println("Error initializing ESP-NOW");
-    return;
-  }
-
-  // Once ESPNow is successfully Init, we will register for recv CB to
-  // get recv packer info
-  esp_now_register_recv_cb(OnDataRecv);
-}
-
-// SPIFFS Initialization
-void initSPIFFS()
-{
-  if (!SPIFFS.begin())
-  {
-    Serial.println("Cannot mount SPIFFS volume...");
-    while (1)
-      ; // infinite loop
-  }
-  else
-  {
-    Serial.println("SPIFFS volume mounted properly");
-  }
-}
-
-// setting up tft
-void tftSetup()
-{
-  // Setup the TFT
-  tft.begin();
-  tft.setRotation(3);
-  tft.loadFont("NotoSansBold20");
-  tft.setTextColor(fg, bg);
-  tft.fillScreen(bg);
-  tft.setCursor(0, 0);
-  tft.println("Hello!");
-  tft.println("Searching for the sensor...");
 }
 
 // count down timer on the tft
@@ -360,8 +358,11 @@ void tftDisplay()
   tft.setTextColor(TFT_YELLOW, bg);
 
   // Create TTF fonts using instructions at https://pages.uoregon.edu/park/Processing/process5.html
-  if (switchDisp == true)
+  if (switchDisp)
   {
+    Serial.printf("Displaying BME280 on the screen, @ %lu...", millis());
+    Serial.println();
+    
     // Temperature
     tft.fillRect(10, 30, 250, 30, bg);
     tft.setCursor(10, 30);
@@ -424,6 +425,9 @@ void tftDisplay()
   }
   else // for MPU6050
   {
+    Serial.printf("Displaying MPU6050 on the screen, @ %lu...", millis());
+    Serial.println();
+
     // Temperature
     tft.fillRect(10, 30, 250, 30, bg);
     tft.setCursor(10, 30);
@@ -478,6 +482,7 @@ void detectChange()
       // Enable the task
       dataDisplayTFT.enable();
       dataScheduler.enable();
+      count = countInit;
 
       // assigning the previous values
       for (int j = 0; j < 4; j++)
