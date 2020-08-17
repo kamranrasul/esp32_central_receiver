@@ -322,12 +322,27 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len)
   Serial2.print(" "); // spacer
 
   Serial.println("\n*** Sent to IO IC ***");
+
+  delay(500);
+
+  // checking the status of the receiver
+  if(Serial2.available())
+  {
+    if(Serial2.parseInt() == 200)
+    {
+      Serial.println("Values have been successfully received by IO IC...");
+    }
+    else
+    {
+      Serial.println("Values have not been received by the IO IC...");
+    }
+  }
 }
 
 // count down timer on the tft
 void countDownTimer()
 {
-  count = count <= 0 ? countInit : count;
+  count = count == 0 ? countInit : count;
   switchDisp = (count == 1 || count == 11) ? !switchDisp : switchDisp;
 
   // debugging on Serial Port
@@ -343,9 +358,6 @@ void countDownTimer()
 // displaying on tft
 void tftDisplay()
 {
-  uint16_t bg = TFT_BLACK;
-  uint16_t fg = TFT_WHITE;
-
   // displaying on the TFT
   tft.fillScreen(bg);
   tft.setCursor(5, 5);
