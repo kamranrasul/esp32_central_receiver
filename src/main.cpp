@@ -19,8 +19,8 @@
 #include "clock.h"         // for time display on LCD
 
 // Local WiFi Credentials
-const char *WIFI_SSID = "Hidden_network";
-const char *WIFI_PASS = "pak.awan.pk";
+const char *WIFI_SSID = "YOUR WIFI SSID";
+const char *WIFI_PASS = "YOUR WIFI PASS";
 
 // time variable setup
 const char *ntpServer = "pool.ntp.org";
@@ -169,64 +169,6 @@ void timeSetup()
   WiFi.mode(WIFI_OFF);
 }
 
-// setting up esp NOW
-void espNowSetup()
-{
-  //Set device as a Wi-Fi Station
-  WiFi.mode(WIFI_STA);
-
-  //Init ESP-NOW
-  if (esp_now_init() != ESP_OK)
-  {
-    Serial.println("Error initializing ESP-NOW");
-    return;
-  }
-
-  // Once ESPNow is successfully Init, we will register for recv CB to
-  // get recv packer info
-  esp_now_register_recv_cb(OnDataRecv);
-}
-
-// SPIFFS Initialization
-void initSPIFFS()
-{
-  if (!SPIFFS.begin())
-  {
-    Serial.println("Cannot mount SPIFFS volume...");
-    while (1)
-      ; // infinite loop
-  }
-  else
-  {
-    Serial.println("SPIFFS volume mounted properly");
-  }
-}
-
-// setting up tft
-void tftSetup()
-{
-  // Setup the TFT
-  tft.begin();
-  tft.setRotation(3);
-  tft.loadFont("NotoSansBold20");
-  tft.setTextColor(fg, bg);
-  tft.fillScreen(bg);
-  tft.setCursor(0, 0);
-  tft.println("Hello!");
-  tft.println("Searching for the sensor...");
-}
-
-// time function
-void printLocalTime()
-{
-  if (!getLocalTime(&timeinfo))
-  {
-    Serial.println("Failed to obtain time");
-    return;
-  }
-  Serial.println(&timeinfo, "\n%A, %B %d, %Y %H:%M:%S");
-}
-
 // callback function that will be executed when data is received
 void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len)
 {
@@ -328,15 +270,76 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len)
   // checking the status of the receiver
   if(Serial2.available())
   {
+    Serial.println();
+    Serial.print("Last Packet Send Status to IO IC:        ");
     if(Serial2.parseInt() == 200)
     {
-      Serial.println("Values have been successfully received by IO IC...");
+      Serial.println("Delivery Success");
     }
     else
     {
-      Serial.println("Values have not been received by the IO IC...");
+      Serial.println("Delivery Failure");
     }
+    Serial.println();
   }
+}
+
+// setting up esp NOW
+void espNowSetup()
+{
+  //Set device as a Wi-Fi Station
+  WiFi.mode(WIFI_STA);
+
+  //Init ESP-NOW
+  if (esp_now_init() != ESP_OK)
+  {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
+
+  // Once ESPNow is successfully Init, we will register for recv CB to
+  // get recv packer info
+  esp_now_register_recv_cb(OnDataRecv);
+}
+
+// SPIFFS Initialization
+void initSPIFFS()
+{
+  if (!SPIFFS.begin())
+  {
+    Serial.println("Cannot mount SPIFFS volume...");
+    while (1)
+      ; // infinite loop
+  }
+  else
+  {
+    Serial.println("SPIFFS volume mounted properly");
+  }
+}
+
+// setting up tft
+void tftSetup()
+{
+  // Setup the TFT
+  tft.begin();
+  tft.setRotation(3);
+  tft.loadFont("NotoSansBold20");
+  tft.setTextColor(fg, bg);
+  tft.fillScreen(bg);
+  tft.setCursor(0, 0);
+  tft.println("Hello!");
+  tft.println("Searching for the sensor...");
+}
+
+// time function
+void printLocalTime()
+{
+  if (!getLocalTime(&timeinfo))
+  {
+    Serial.println("Failed to obtain time");
+    return;
+  }
+  Serial.println(&timeinfo, "\n%A, %B %d, %Y %H:%M:%S");
 }
 
 // count down timer on the tft
@@ -414,7 +417,7 @@ void tftDisplay()
     tft.setCursor(160, 130);
     tft.println(boardsStruct.pinStatus[0] ? "ON" : "OFF");
 
-    // INPUT 210
+    // INPUT 25
     tft.fillRect(10, 155, 250, 30, bg);
     tft.setCursor(10, 155);
     tft.print("Furnace:");
